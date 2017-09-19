@@ -7,8 +7,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+#include <stdbool.h>
 
-void collect_transmitters(char OUIaddress[], char filename[]);
 void read_address_file(char OUIaddress[], char filename[],char choice_flag[]);
 int number_of_lines(char filename[]); //this function may not be necessary
 
@@ -23,7 +23,7 @@ int main(int argc, char *argv[])
 	}
 	
 	if(argc==3){
-		read_address_file("", filename, argv[1]);
+		read_address_file("", filename, argv[1]); //Send blank string if no OUI file is provided
 	} 
 	else 
 	{
@@ -37,7 +37,12 @@ void read_address_file(char OUIaddress[], char filename[], char choice_flag[]){
 	char arrayOfLines[numOfLines][200];//specify num of strings and characters per string
 	int loopcount = 0;
 	char arrayOfAddresses[numOfLines][18];
-	char arrayOfBytes[numOfLines][3];
+	int nAddresses = 0;
+	long arrayOfBytes[numOfLines];
+	for (int i = 0; i < numOfLines; ++i)
+		arrayOfBytes[i] = 0;
+//	char UniqueAddressArray[numOfLines][18];
+//	int UniqueByteArray[numOfLines];
 		
 	if(file != NULL){
 		char currentline[200]; //set a maximum size for the line
@@ -54,39 +59,32 @@ void read_address_file(char OUIaddress[], char filename[], char choice_flag[]){
 		exit(EXIT_FAILURE);
 	}
 	for(int i = 0; i<numOfLines; i++){
-		int k = 0; //This will change depending on whether transmitters or receivers are being fetched.
-		for(int j = 0; j<18; j++){ //this loop fetches the MAC addresses
-			if(strcmp(choice_flag, "t") == 0){ //This if statement decides whether to fetch receivers of transmitters
-				k = j+18;
-			} 
-			else if(strcmp(choice_flag, "r") == 0){
-				k = j+36;
+		double time;
+		char transmitter[18], receiver[18];
+		long bytes;
+		sscanf(arrayOfLines[i], "%lf\t%s\t%s\t%ld", &time, transmitter, receiver, &bytes);
+		char Unique = 1;
+		int iter = 0;
+		for (int j = 0; j < nAddresses; ++j) {
+			if (!strcmp(choice_flag[0] == 't' ? transmitter : receiver, arrayOfAddresses[j])) {
+				Unique = 0;
+				iter = j;
+				break;
 			}
-			else{
-				printf("Choice flag is invalid. Please enter 'r' or 't'.\n");
-			}
-			arrayOfAddresses[i][j] =  arrayOfLines[i][k];			
-			printf("%c", arrayOfAddresses[i][j]);
 		}
-		printf("     ");
-		for(int j = 0; j<10;j++){ //This loop will extract the bytes transmitted/received into arrayOfBytes
-			int k = j + 54;
-			if(isdigit(arrayOfLines[i][k])!=0){
-				arrayOfBytes[i][j] = arrayOfLines[i][k];
-				printf("%c", arrayOfBytes[i][j]);
-			}
-			else{
-				continue;
-			}		
+		if(Unique){
+			memcpy(arrayOfAddresses[nAddresses], choice_flag[0] == 't' ? transmitter : receiver, 18);			
+			iter = nAddresses;
+			++nAddresses;
 		}
-		printf("\n");
-	}
+		arrayOfBytes[iter] += bytes; 
+	//	printf("%s\t%ld\n", arrayOfAddresses[iter], arrayOfBytes[iter]);
+		}
+		for (int i = 0; i < nAddresses; i++){
+			printf("%s\t%ld\n", arrayOfAddresses[i], arrayOfBytes[i]);
+		}	
 }
 
-void collect_transmitters(char OUIaddress[], char filename[])
-{
-	printf("%s\n", filename);	
-}
 int number_of_lines(char filename[])
 {
 	FILE *file = fopen(filename, "r");
